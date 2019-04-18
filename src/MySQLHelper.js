@@ -1,7 +1,9 @@
 import mysql from 'mysql';
+import { promisify } from 'util';
 import log from '@kevinwang0316/log';
 
 let pool;
+let queryAsyncFn;
 
 export const initialPool = (host, user, password, database, connectionLimit = 1) => {
   if (!pool) {
@@ -14,6 +16,7 @@ export const initialPool = (host, user, password, database, connectionLimit = 1)
         password,
         database,
       });
+      queryAsyncFn = promisify(pool.query);
     } catch (err) {
       log.error(err);
     }
@@ -33,6 +36,20 @@ export const query = (...args) => {
 
   try {
     return pool.query(...args);
+  } catch (err) {
+    log.error(err);
+    return null;
+  }
+};
+
+export const queryAsync = (...args) => {
+  if (!pool) {
+    log.debug('The pool has not been created.');
+    return null;
+  }
+
+  try {
+    return queryAsyncFn(...args);
   } catch (err) {
     log.error(err);
     return null;

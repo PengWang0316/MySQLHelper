@@ -1,6 +1,6 @@
 import log from '@kevinwang0316/log';
 import mysql from 'mysql';
-import { promisify } from 'util';
+// import { promisify } from 'util';
 
 import {
   initialPool, getPool, query, release, queryAsync,
@@ -9,7 +9,7 @@ import {
 const mockQueryReturn = { on: 'on' };
 const mockQuery = jest.fn().mockReturnValue(mockQueryReturn);
 const mockRelease = jest.fn();
-const mockQueryAsync = jest.fn().mockReturnValue(mockQueryReturn);
+// const mockQueryAsync = jest.fn().mockReturnValue(mockQueryReturn);
 
 jest.mock('@kevinwang0316/log', () => ({
   debug: jest.fn(),
@@ -21,7 +21,7 @@ jest.mock('mysql', () => ({
     release: mockRelease,
   })),
 }));
-jest.mock('util', () => ({ promisify: jest.fn().mockImplementation(() => mockQueryAsync) }));
+// jest.mock('util', () => ({ promisify: jest.fn().mockImplementation(() => mockQueryAsync) }));
 
 describe('MySQLHelper', () => {
   beforeEach(() => jest.clearAllMocks());
@@ -39,11 +39,12 @@ describe('MySQLHelper', () => {
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
-  test('queryAsync without initialization', () => {
-    expect(queryAsync()).toBeNull();
-    expect(log.debug).toHaveBeenCalledTimes(1);
-    expect(log.debug).toHaveBeenLastCalledWith('The pool has not been created.');
-    expect(mockQueryAsync).not.toHaveBeenCalled();
+  test('queryAsync without initialization', async () => {
+    try {
+      await queryAsync();
+    } catch (err) {
+      expect(err).toEqual(new Error('The pool has not been created.'));
+    }
   });
 
   test('release without initialization', () => {
@@ -60,7 +61,7 @@ describe('MySQLHelper', () => {
     expect(mysql.createPool).toHaveBeenLastCalledWith({
       host: 'host', user: 'user', password: 'pw', database: 'database', connectionLimit: 10,
     });
-    expect(promisify).toHaveBeenCalledTimes(1);
+    // expect(promisify).toHaveBeenCalledTimes(1);
     expect(log.debug).toHaveBeenCalledTimes(1);
     expect(log.debug).toHaveBeenLastCalledWith('Creating a new connectin pool with connection limit 10');
     expect(getPool()).not.toBeNull();
@@ -82,16 +83,6 @@ describe('MySQLHelper', () => {
 
     expect(mockQuery).toHaveBeenCalledTimes(1);
     expect(mockQuery).toHaveBeenLastCalledWith('a', 'b');
-    expect(log.debug).not.toHaveBeenCalled();
-    expect(log.error).not.toHaveBeenCalled();
-    expect(returnValue).toEqual(mockQueryReturn);
-  });
-
-  test('queryAsync with an existed pool', () => {
-    const returnValue = queryAsync('a', 'b');
-
-    expect(mockQueryAsync).toHaveBeenCalledTimes(1);
-    expect(mockQueryAsync).toHaveBeenLastCalledWith('a', 'b');
     expect(log.debug).not.toHaveBeenCalled();
     expect(log.error).not.toHaveBeenCalled();
     expect(returnValue).toEqual(mockQueryReturn);
@@ -121,12 +112,12 @@ describe('MySQLHelper', () => {
     expect(log.error).toHaveBeenLastCalledWith(new Error('error message'));
   });
 
-  test('query and queryAsync with an existed pool and error', () => {
+  test('query with an existed pool and error', () => {
     // mockQuery.mockImplementationOnce();
-    const newMockQueryAsync = jest.fn().mockImplementation(() => { throw new Error('error message'); });
-    promisify.mockReturnValueOnce(newMockQueryAsync);
+    // const newMockQueryAsync = jest.fn().mockImplementation(() => { throw new Error('error message'); });
+    // promisify.mockReturnValueOnce(newMockQueryAsync);
     const newMockQuery = jest.fn().mockImplementation(() => { throw new Error('error message'); });
-    mysql.createPool.mockReturnValueOnce({ query: newMockQuery });
+    mysql.createPool.mockReturnValueOnce({ query: newMockQuery, release: mockRelease });
     initialPool('host', 'user', 'pw', 'database');
 
     const returnValueA = query('a', 'b', 'c');
@@ -138,14 +129,46 @@ describe('MySQLHelper', () => {
     expect(log.error).toHaveBeenLastCalledWith(new Error('error message'));
     expect(returnValueA).toEqual(null);
 
-    jest.clearAllMocks();
-    const returnValueB = queryAsync('a', 'b', 'c');
+    // jest.clearAllMocks();
+    // const returnValueB = queryAsync('a', 'b', 'c');
 
-    expect(newMockQueryAsync).toHaveBeenCalledTimes(1);
-    expect(newMockQueryAsync).toHaveBeenLastCalledWith('a', 'b', 'c');
-    // expect(log.debug).not.toHaveBeenCalled();
-    expect(log.error).toHaveBeenCalledTimes(1);
-    expect(log.error).toHaveBeenLastCalledWith(new Error('error message'));
-    expect(returnValueB).toEqual(null);
+    // expect(newMockQueryAsync).toHaveBeenCalledTimes(1);
+    // expect(newMockQueryAsync).toHaveBeenLastCalledWith('a', 'b', 'c');
+    // // expect(log.debug).not.toHaveBeenCalled();
+    // expect(log.error).toHaveBeenCalledTimes(1);
+    // expect(log.error).toHaveBeenLastCalledWith(new Error('error message'));
+    // expect(returnValueB).toEqual(null);
+  });
+
+  test('queryAsync with an existed pool', async () => {
+    release();
+    const newMockQuery = jest.fn().mockImplementationOnce((...args) => {
+      args[args.length - 1](null, mockQueryReturn, {});
+    });
+    mysql.createPool.mockReturnValueOnce({ query: newMockQuery, release: mockRelease });
+    initialPool('host', 'user', 'pw', 'database');
+
+    const returnValue = await queryAsync('a', 'b');
+
+    expect(newMockQuery).toHaveBeenCalledTimes(1);
+    expect(returnValue).toEqual({
+      fields: {},
+      rows: mockQueryReturn,
+    });
+  });
+
+  test('queryAsync with an existed pool with error', async () => {
+    release();
+    const newMockQuery = jest.fn().mockImplementationOnce((...args) => {
+      args[args.length - 1](new Error('error message'), mockQueryReturn, {});
+    });
+    mysql.createPool.mockReturnValueOnce({ query: newMockQuery, release: mockRelease });
+    initialPool('host', 'user', 'pw', 'database');
+
+    try {
+      await queryAsync('a', 'b');
+    } catch (err) {
+      expect(err).toEqual(new Error('error message'));
+    }
   });
 });

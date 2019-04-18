@@ -2,7 +2,6 @@ import mysql from 'mysql';
 import log from '@kevinwang0316/log';
 
 let pool;
-// let queryAsyncFn;
 
 export const initialPool = (host, user, password, database, connectionLimit = 1) => {
   if (!pool) {
@@ -15,7 +14,6 @@ export const initialPool = (host, user, password, database, connectionLimit = 1)
         password,
         database,
       });
-      // queryAsyncFn = promisify(pool.query);
     } catch (err) {
       log.error(err);
     }

@@ -3,7 +3,7 @@ import mysql from 'mysql';
 // import { promisify } from 'util';
 
 import {
-  initialPool, getPool, query, release, queryAsync,
+  initialPool, getPool, query, release, queryAsync, format,
 } from '../src/MySQLHelper';
 
 const mockQueryReturn = { on: 'on' };
@@ -20,6 +20,7 @@ jest.mock('mysql', () => ({
     query: mockQuery,
     release: mockRelease,
   })),
+  format: jest.fn().mockReturnValue('format return value'),
 }));
 // jest.mock('util', () => ({ promisify: jest.fn().mockImplementation(() => mockQueryAsync) }));
 
@@ -55,11 +56,16 @@ describe('MySQLHelper', () => {
   });
 
   test('initialPool without an existed pool', () => {
-    initialPool('host', 'user', 'pw', 'database', 10);
+    initialPool('host', 'user', 'pw', 'database', 10, { multipleStatements: true });
 
     expect(mysql.createPool).toHaveBeenCalledTimes(1);
     expect(mysql.createPool).toHaveBeenLastCalledWith({
-      host: 'host', user: 'user', password: 'pw', database: 'database', connectionLimit: 10,
+      host: 'host',
+      user: 'user',
+      password: 'pw',
+      database: 'database',
+      connectionLimit: 10,
+      multipleStatements: true,
     });
     // expect(promisify).toHaveBeenCalledTimes(1);
     expect(log.debug).toHaveBeenCalledTimes(1);
@@ -170,5 +176,13 @@ describe('MySQLHelper', () => {
     } catch (err) {
       expect(err).toEqual(new Error('error message'));
     }
+  });
+
+  test('format', () => {
+    const returnValue = format('query');
+
+    expect(mysql.format).toHaveBeenCalledTimes(1);
+    expect(mysql.format).toHaveBeenLastCalledWith('query');
+    expect(returnValue).toBe('format return value');
   });
 });

@@ -3,7 +3,7 @@ import log from '@kevinwang0316/log';
 
 let pool;
 
-export const initialPool = (host, user, password, database, connectionLimit = 1) => {
+export const initialPool = (host, user, password, database, connectionLimit = 1, options = {}) => {
   if (!pool) {
     log.debug(`Creating a new connectin pool with connection limit ${connectionLimit}`);
     try {
@@ -13,6 +13,7 @@ export const initialPool = (host, user, password, database, connectionLimit = 1)
         user,
         password,
         database,
+        ...options,
       });
     } catch (err) {
       log.error(err);
@@ -54,3 +55,5 @@ export const release = () => {
     pool = null;
   }
 };
+
+export const format = string => mysql.format(string);

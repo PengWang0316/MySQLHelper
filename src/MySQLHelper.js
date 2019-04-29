@@ -56,4 +56,4 @@ export const release = () => {
   }
 };
 
-export const format = string => mysql.format(string);
+export const format = (sql, paramters = []) => mysql.format(sql, paramters);

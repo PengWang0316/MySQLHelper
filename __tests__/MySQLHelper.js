@@ -179,10 +179,19 @@ describe('MySQLHelper', () => {
   });
 
   test('format', () => {
+    const paramters = ['1', '2'];
+    const returnValue = format('query', paramters);
+
+    expect(mysql.format).toHaveBeenCalledTimes(1);
+    expect(mysql.format).toHaveBeenLastCalledWith('query', paramters);
+    expect(returnValue).toBe('format return value');
+  });
+
+  test('format without paramters', () => {
     const returnValue = format('query');
 
     expect(mysql.format).toHaveBeenCalledTimes(1);
-    expect(mysql.format).toHaveBeenLastCalledWith('query');
+    expect(mysql.format).toHaveBeenLastCalledWith('query', []);
     expect(returnValue).toBe('format return value');
   });
 });
